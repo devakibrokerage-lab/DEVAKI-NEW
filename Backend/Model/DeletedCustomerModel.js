@@ -7,45 +7,45 @@ const DeletedCustomerSchema = new Schema({
         type: String,
         required: true,
     },
-    
+
     password: {
         type: String,
         default: '', // Some customers may not have passwords
     },
-    
+
     name: {
         type: String,
         required: true,
     },
-    
+
     role: {
         type: String,
         default: 'customer',
     },
-    
+
     // 🔗 BROKER LINKAGE: Which broker this customer belonged to
     attached_broker_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Broker',
         required: true,
     },
-    
+
     // 🗑️ DELETION INFO
     original_id: {
         type: mongoose.Schema.Types.ObjectId,
         required: true, // Original MongoDB _id from Customer collection
     },
-    
+
     deleted_at: {
         type: Date,
         default: Date.now,
     },
-    
+
     deleted_by: {
         type: String, // Changed to String to allow 'SuperBroker' or Broker ID
         required: true,
     },
-    
+
     // Original creation date (preserved from Customer)
     original_created_at: {
         type: Date,
@@ -74,7 +74,7 @@ const DeletedCustomerSchema = new Schema({
     archived_orders: [{
         broker_id_str: String,
         customer_id_str: String,
-        security_Id: String,
+        instrument_token: String,
         symbol: String,
         segment: String,
         side: String,

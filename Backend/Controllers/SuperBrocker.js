@@ -12,13 +12,13 @@ import UserWatchlistModel from '../Model/UserWatchlistModel.js';
 // ... (Existing getBrokers and addBroker functions remain same, but I will include them to match structure if needed, or append new functions)
 
 const getBrokers = asyncHandler(async (req, res) => {
-   
-    const brokers = await BrokerModel.find({ role: 'broker' }); 
-    
- 
+
+    const brokers = await BrokerModel.find({ role: 'broker' });
+
+
     const formattedBrokers = brokers.map(broker => ({
-        
-        id: broker.login_id, 
+
+        id: broker.login_id,
         name: broker.name,
         organization_name: broker.organization_name, // Optional: return if needed
         password: broker.password,
@@ -39,7 +39,7 @@ const getBrokers = asyncHandler(async (req, res) => {
 
 const addBroker = asyncHandler(async (req, res) => {
     // AddBrokerModal se name, password, organization_name aayega
-    const { name, password, organization_name } = req.body; 
+    const { name, password, organization_name } = req.body;
     console.log("api hit")
 
     if (!name || !password || !organization_name) {
@@ -62,7 +62,7 @@ const addBroker = asyncHandler(async (req, res) => {
             newBroker: {
                 id: newBroker.login_id, // Return the auto-generated 10-digit ID
                 name: newBroker.name,
-                password : password,
+                password: password,
                 organization_name: newBroker.organization_name,
                 status: 'Active',
                 joining_date: newBroker.created_at.toISOString().split('T')[0]
@@ -80,38 +80,77 @@ const addBroker = asyncHandler(async (req, res) => {
 // Helper: Archive a single customer (Same logic as deleteCustomer in CustomerController)
 // Helper: Soft Delete Customer (Archives Metadata, KEEPS Data)
 const softDeleteCustomer = async (customer, deletedBy) => {
-    // We only archive the customer's identity. 
-    // We DO NOT move their Orders, Funds, Holdings, etc. They stay in the live tables 
-    // but effectively become 'dormant' because the User/Broker can't login.
-    
+    // 1. Get broker's login_id for querying related data
+    const broker = await BrokerModel.findById(customer.attached_broker_id).select('login_id');
+    const brokerIdStr = broker?.login_id || '';
+    const customerIdStr = customer.customer_id;
+
+    // 2. Fetch all related data
+    const fundData = await FundModel.findOne({ customer_id_str: customerIdStr, broker_id_str: brokerIdStr });
+    const orders = await OrderModel.find({ customer_id_str: customerIdStr, broker_id_str: brokerIdStr });
+    const holdings = await HoldingModel.find({ userId: customer._id });
+    const positions = await PositionsModel.find({ userId: customer._id });
+    const watchlist = await UserWatchlistModel.findOne({ customer_id_str: customerIdStr, broker_id_str: brokerIdStr });
+
+    // 3. Prepare archived data
+    const archivedFund = fundData ? {
+        net_available_balance: fundData.net_available_balance || 0,
+        intraday: fundData.intraday || {},
+        overnight: fundData.overnight || {},
+        broker_mobile_number: fundData.broker_mobile_number,
+    } : {};
+
+    const archivedOrders = orders.map(o => ({ ...o.toObject(), _id: undefined }));
+    const archivedHoldings = holdings.map(h => ({ ...h.toObject(), _id: undefined }));
+    const archivedPositions = positions.map(p => ({ ...p.toObject(), _id: undefined }));
+    const archivedWatchlist = watchlist?.instruments || [];
+
+    const dataSummary = {
+        total_orders: orders.length,
+        open_orders: orders.filter(o => o.order_status === 'OPEN').length,
+        closed_orders: orders.filter(o => o.order_status === 'CLOSED').length,
+        total_holdings: holdings.length,
+        total_positions: positions.length,
+        watchlist_count: archivedWatchlist.length,
+        fund_balance: fundData?.net_available_balance || 0,
+    };
+
+    // 4. Create DeletedCustomer record
     await DeletedCustomerModel.create({
         customer_id: customer.customer_id,
         password: customer.password || '',
         name: customer.name,
         role: customer.role,
         attached_broker_id: customer.attached_broker_id,
-        original_id: customer._id, // Critical for reconnecting Holdings/Positions
+        original_id: customer._id,
         deleted_at: new Date(),
         deleted_by: deletedBy,
         original_created_at: customer.createdAt,
-        // No archived_fund, archived_orders etc. because we leave them in place.
-        data_summary: {
-             // We can fill this if needed for stats, but optional
-        }
+        archived_fund: archivedFund,
+        archived_orders: archivedOrders,
+        archived_holdings: archivedHoldings,
+        archived_positions: archivedPositions,
+        archived_watchlist: archivedWatchlist,
+        data_summary: dataSummary
     });
 
-    // Only delete the Customer Login Record
+    // 5. Delete from live collections
     await CustomerModel.deleteOne({ _id: customer._id });
+    if (fundData) await FundModel.deleteOne({ _id: fundData._id });
+    if (orders.length > 0) await OrderModel.deleteMany({ customer_id_str: customerIdStr, broker_id_str: brokerIdStr });
+    if (holdings.length > 0) await HoldingModel.deleteMany({ userId: customer._id });
+    if (positions.length > 0) await PositionsModel.deleteMany({ userId: customer._id });
+    if (watchlist) await UserWatchlistModel.deleteOne({ _id: watchlist._id });
 };
 
 // @desc    SuperBroker deletes a Broker (moves to Recycle Bin along with ALL customers)
 // @route   DELETE /api/superbroker/delete-broker/:id
 const deleteBroker = asyncHandler(async (req, res) => {
-    const brokerId = req.params.id; 
-    
+    const brokerId = req.params.id;
+
     let broker = await BrokerModel.findOne({ login_id: brokerId });
     if (!broker) {
-         try { broker = await BrokerModel.findById(brokerId); } catch(e) { }
+        try { broker = await BrokerModel.findById(brokerId); } catch (e) { }
     }
 
     if (!broker) {
@@ -169,7 +208,7 @@ const getDeletedBrokers = asyncHandler(async (req, res) => {
     const formatted = deletedBrokers.map(b => ({
         id: b.login_id,
         name: b.name,
-        password: b.password, 
+        password: b.password,
         deleted_at: b.deleted_at.toISOString().split('T')[0],
         customers_count: b.data_summary?.customers_count || 0,
         original_id: b.original_id,
@@ -186,93 +225,147 @@ const getDeletedBrokers = asyncHandler(async (req, res) => {
 // @route   POST /api/superbroker/restore-broker/:id
 const restoreBroker = asyncHandler(async (req, res) => {
     const brokerLoginId = req.params.id;
+    console.log(`[restoreBroker] Attempting to restore broker: ${brokerLoginId}`);
 
     const deletedBroker = await DeletedBrokerModel.findOne({ login_id: brokerLoginId });
     if (!deletedBroker) {
+        console.error(`[restoreBroker] Broker not found in Recycle Bin: ${brokerLoginId}`);
         return res.status(404).json({ success: false, message: 'Deleted broker not found.' });
     }
 
-    // 1. Restore Broker with ORIGINAL ID (Critical for consistency)
-    const restoredBroker = await BrokerModel.create({
-        _id: deletedBroker.original_id, // Restore original ObjectId
-        login_id: deletedBroker.login_id,
-        name: deletedBroker.name,
-        password: deletedBroker.password,
-        organization_name: deletedBroker.organization_name,
-        role: deletedBroker.role,
-        created_at: deletedBroker.original_created_at || new Date()
-    });
-
-    // 2. Restore Customers
-    const deletedCustomers = await DeletedCustomerModel.find({ attached_broker_id: deletedBroker.original_id });
-    console.log(`[restoreBroker] Restoring ${deletedCustomers.length} customers for broker ${deletedBroker.name}`);
-
-    for (const dc of deletedCustomers) {
-        // Restore Customer Record with NEW Broker ID
-        const newCustomer = await CustomerModel.create({
-            customer_id: dc.customer_id,
-            password: dc.password,
-            name: dc.name,
-            role: dc.role,
-            attached_broker_id: restoredBroker._id, // LINK TO NEW BROKER ID
+    try {
+        // 1. Conflict Resolution for Broker
+        console.log(`[restoreBroker] Resolving conflicts for Broker record: ${brokerLoginId}`);
+        // Delete any existing broker with the same original_id OR login_id
+        await BrokerModel.deleteMany({
+            $or: [
+                { _id: deletedBroker.original_id },
+                { login_id: deletedBroker.login_id }
+            ]
         });
 
-        // Restore Fund
-        if (dc.archived_fund && Object.keys(dc.archived_fund).length > 0) {
-            await FundModel.create({
-                customer_id_str: dc.customer_id,
-                broker_id_str: restoredBroker.login_id,
-                ...dc.archived_fund
+        // 2. Restore Broker
+        console.log(`[restoreBroker] Re-creating Broker record: ${deletedBroker.name} (${deletedBroker.original_id})`);
+        const restoredBroker = await BrokerModel.create({
+            _id: deletedBroker.original_id,
+            login_id: deletedBroker.login_id,
+            name: deletedBroker.name,
+            password: deletedBroker.password,
+            organization_name: deletedBroker.organization_name,
+            role: deletedBroker.role,
+            created_at: deletedBroker.original_created_at || new Date()
+        });
+
+        // 3. Find Customers to Restore
+        const deletedCustomers = await DeletedCustomerModel.find({ attached_broker_id: deletedBroker.original_id });
+        console.log(`[restoreBroker] Found ${deletedCustomers.length} customers to restore.`);
+
+        for (const dc of deletedCustomers) {
+            console.log(`[restoreBroker] Resolving conflicts for customer: ${dc.name} (${dc.customer_id})`);
+
+            // Delete any existing customer with same original_id OR customer_id
+            await CustomerModel.deleteMany({
+                $or: [
+                    { _id: dc.original_id },
+                    { customer_id: dc.customer_id }
+                ]
             });
-        }
 
-        // Restore Orders
-        if (dc.archived_orders?.length > 0) {
-            await OrderModel.insertMany(dc.archived_orders.map(o => ({
-                ...o,
-                broker_id_str: restoredBroker.login_id, // Update broker_id_str if needed, or keep original if it was login_id
-                _id: undefined
-            })));
-        }
+            // Delete associated live data for this customer to ensure clean restore
+            await FundModel.deleteMany({ customer_id_str: dc.customer_id });
+            await UserWatchlistModel.deleteMany({ customer_id_str: dc.customer_id });
+            await OrderModel.deleteMany({ customer_id_str: dc.customer_id });
+            await HoldingModel.deleteMany({ userId: dc.original_id });
+            await PositionsModel.deleteMany({ userId: dc.original_id });
 
-        // Restore Holdings
-        if (dc.archived_holdings?.length > 0) {
-            await HoldingModel.insertMany(dc.archived_holdings.map(h => ({
-                ...h,
-                userId: newCustomer._id,
-                _id: undefined
-            })));
-        }
-
-        // Restore Positions
-        if (dc.archived_positions?.length > 0) {
-            await PositionsModel.insertMany(dc.archived_positions.map(p => ({
-                ...p,
-                userId: newCustomer._id,
-                _id: undefined
-            })));
-        }
-
-        // Restore Watchlist
-        if (dc.archived_watchlist?.length > 0) {
-            await UserWatchlistModel.create({
-                customer_id_str: dc.customer_id,
-                broker_id_str: restoredBroker.login_id,
-                instruments: dc.archived_watchlist
+            // 4. Restore Customer Record
+            console.log(`[restoreBroker] Re-creating customer: ${dc.name}`);
+            const restoredCustomer = await CustomerModel.create({
+                _id: dc.original_id,
+                customer_id: dc.customer_id,
+                password: dc.password,
+                name: dc.name,
+                role: dc.role,
+                attached_broker_id: restoredBroker._id,
+                createdAt: dc.original_created_at
             });
+
+            // 5. Restore Fund
+            if (dc.archived_fund && Object.keys(dc.archived_fund).length > 0) {
+                console.log(`[restoreBroker] Restoring fund for ${dc.customer_id}`);
+                await FundModel.create({
+                    customer_id_str: restoredCustomer.customer_id,
+                    broker_id_str: restoredBroker.login_id,
+                    ...dc.archived_fund
+                });
+            }
+
+            // 6. Restore Orders
+            if (dc.archived_orders?.length > 0) {
+                console.log(`[restoreBroker] Restoring ${dc.archived_orders.length} orders for ${dc.customer_id}`);
+                await OrderModel.insertMany(dc.archived_orders.map(o => {
+                    const orderData = o.toObject ? o.toObject() : o;
+
+                    // compatibility check for old field name
+                    if (!orderData.instrument_token && orderData.security_Id) {
+                        orderData.instrument_token = orderData.security_Id;
+                    }
+
+                    // Essential fields check to avoid validation errors
+                    if (!orderData.instrument_token) orderData.instrument_token = "N/A";
+                    if (!orderData.segment) orderData.segment = "N/A";
+
+                    return { ...orderData, _id: undefined };
+                }));
+            }
+
+            // 7. Restore Holdings
+            if (dc.archived_holdings?.length > 0) {
+                console.log(`[restoreBroker] Restoring ${dc.archived_holdings.length} holdings for ${dc.customer_id}`);
+                await HoldingModel.insertMany(dc.archived_holdings.map(h => {
+                    const holdingData = h.toObject ? h.toObject() : h;
+                    return { ...holdingData, userId: restoredCustomer._id, _id: undefined };
+                }));
+            }
+
+            // 8. Restore Positions
+            if (dc.archived_positions?.length > 0) {
+                console.log(`[restoreBroker] Restoring ${dc.archived_positions.length} positions for ${dc.customer_id}`);
+                await PositionsModel.insertMany(dc.archived_positions.map(p => {
+                    const posData = p.toObject ? p.toObject() : p;
+                    return { ...posData, userId: restoredCustomer._id, _id: undefined };
+                }));
+            }
+
+            // 9. Restore Watchlist
+            if (dc.archived_watchlist?.length > 0) {
+                console.log(`[restoreBroker] Restoring watchlist for ${dc.customer_id}`);
+                await UserWatchlistModel.create({
+                    customer_id_str: restoredCustomer.customer_id,
+                    broker_id_str: restoredBroker.login_id,
+                    instruments: dc.archived_watchlist
+                });
+            }
+
+            // Delete from Recycle Bin
+            await DeletedCustomerModel.deleteOne({ _id: dc._id });
         }
 
-        // Delete from Recycle Bin
-        await DeletedCustomerModel.deleteOne({ _id: dc._id });
+        // 10. Delete from Broker Recycle Bin
+        await DeletedBrokerModel.deleteOne({ _id: deletedBroker._id });
+
+        res.status(200).json({
+            success: true,
+            message: 'Broker and all customers restored successfully.'
+        });
+    } catch (error) {
+        console.error(`[restoreBroker] ERROR:`, error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Internal Server Error during restoration.',
+            error: error.toString()
+        });
     }
-
-    // 3. Delete from Broker Recycle Bin
-    await DeletedBrokerModel.deleteOne({ _id: deletedBroker._id });
-
-    res.status(200).json({
-        success: true,
-        message: 'Broker and all customers restored successfully.'
-    });
 });
 
 // @desc    Permanently Delete Broker (AND all data)
@@ -296,7 +389,7 @@ const permanentDeleteBroker = asyncHandler(async (req, res) => {
 
         // 1. Delete Funds
         await FundModel.deleteMany({ customer_id_str: customerLoginId, broker_id_str: brokerLogin });
-        
+
         // 2. Delete Orders
         await OrderModel.deleteMany({ customer_id_str: customerLoginId, broker_id_str: brokerLogin });
 
