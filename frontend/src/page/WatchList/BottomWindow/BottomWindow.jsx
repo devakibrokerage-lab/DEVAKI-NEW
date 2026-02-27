@@ -166,7 +166,7 @@ function BottomWindow({
     const userRole = userString ? JSON.parse(userString).role : '';
     const isCustomer = userRole === 'customer';
     // Helper to identify F&O
-    const isFnO = selectedStock?.segment?.includes('FUT') || selectedStock?.segment?.includes('OPT') || selectedStock?.instrument_type === 'FUT' || selectedStock?.instrument_type === 'CE' || selectedStock?.instrument_type === 'PE';
+    const isFnO = selectedStock?.segment?.includes('OPT') ||  selectedStock?.instrument_type === 'CE' || selectedStock?.instrument_type === 'PE';
 
     return (
       <div className="flex flex-col py-2">
