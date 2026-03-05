@@ -460,8 +460,8 @@ const ClosedOrderBottomWindow = ({ selectedOrder, onClose }) => {
                             Close
                         </button>
 
-                        {/* Condition: Not Hold, Not Overnight AND User is Broker */}
-                        {((came_From !== 'Hold' && came_From !== 'Overnight' && userRole === 'broker') || isOpen) && (
+                        {/* Condition: User must be Broker AND (Not Hold/Overnight OR Market Open) */}
+                        {userRole === 'broker' && ((came_From !== 'Hold' && came_From !== 'Overnight') || isOpen) && (
                             <button
                                 onClick={handleReopen}
                                 disabled={submitting}
