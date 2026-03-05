@@ -507,6 +507,11 @@ export default function ClosedOrder() {
     const token = localStorage.getItem("token") || null;
     const apiBase = import.meta.env.VITE_REACT_APP_API_URL || "";
 
+    // Get user role for permission checks
+    const userString = localStorage.getItem('loggedInUser');
+    const userObject = userString ? JSON.parse(userString) : {};
+    const userRole = userObject.role;
+
     const orderStatus = "CLOSED";
 
     // --- Toast Handler ---
@@ -649,7 +654,7 @@ export default function ClosedOrder() {
                 <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                     <div className="flex justify-between items-center mb-2 flex-shrink-0">
                         <h3 className="text-[var(--text-secondary)] text-sm">Closed Orders ({filteredOrders.length})</h3>
-                        {filteredOrders.length > 0 && (
+                        {filteredOrders.length > 0 && userRole === 'broker' && (
                             <button
                                 onClick={handleDeleteAllClick}
                                 className="flex items-center gap-1 text-xs text-red-500 hover:text-red-400 bg-red-500/10 px-2 py-1 rounded"
@@ -674,7 +679,7 @@ export default function ClosedOrder() {
                                     key={data._id || idx}
                                     data={data}
                                     onSelect={handleOrderSelect}
-                                    onDelete={handleDeleteOrder}
+                                    onDelete={userRole === 'broker' ? handleDeleteOrder : () => { }}
                                 />
                             ))}
                         </div>
@@ -688,7 +693,7 @@ export default function ClosedOrder() {
                     )}
 
                     {/* DYNAMIC DELETE CONFIRMATION MODAL */}
-                    {deleteTarget && (
+                    {deleteTarget && userRole === 'broker' && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                             <div
                                 className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
