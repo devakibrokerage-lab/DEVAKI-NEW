@@ -6,7 +6,8 @@ import {
     getNearestExpiry,
     getOptionChain as kiteGetOptionChain,
     getOptionSegment,
-    normalizeToOptionSegment
+    normalizeToOptionSegment,
+    normalizeUnderlyingName
 } from '../services/kiteOptionChain.js';
 import Instrument from '../Model/InstrumentModel.js';
 
@@ -29,7 +30,8 @@ async function getOptionChain(req, res) {
             });
         }
 
-        const underlyingName = name.toUpperCase();
+        let underlyingName = name.toUpperCase();
+        underlyingName = normalizeUnderlyingName(underlyingName);
         console.log('[OptionChainController] Request:', { underlyingName, segment, expiry });
 
         // Determine option segment - normalize FUT to OPT if needed
@@ -112,7 +114,8 @@ async function getExpiryList(req, res) {
             });
         }
 
-        const underlyingName = name.toUpperCase();
+        let underlyingName = name.toUpperCase();
+        underlyingName = normalizeUnderlyingName(underlyingName);
         const optionSegment = segment
             ? normalizeToOptionSegment(segment)
             : getOptionSegment(underlyingName);
@@ -161,7 +164,8 @@ async function getOptionSecurityId(req, res) {
             });
         }
 
-        const underlyingName = name.toUpperCase();
+        let underlyingName = name.toUpperCase();
+        underlyingName = normalizeUnderlyingName(underlyingName);
         const optionSegment = getOptionSegment(underlyingName);
 
         console.log('[getOptionSecurityId] Looking up:', { underlyingName, strike, optionType, expiry });

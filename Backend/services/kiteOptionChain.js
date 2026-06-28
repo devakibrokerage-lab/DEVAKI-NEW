@@ -55,6 +55,23 @@ export function normalizeToOptionSegment(segment) {
 }
 
 /**
+ * Normalize frontend index names to backend underlying names
+ */
+export function normalizeUnderlyingName(name) {
+    if (!name) return name;
+    const upperName = name.toUpperCase();
+    const mapping = {
+        'NIFTY 50': 'NIFTY',
+        'NIFTY BANK': 'BANKNIFTY',
+        'NIFTY FIN SERVICE': 'FINNIFTY',
+        'NIFTY MIDCAP 100': 'MIDCPNIFTY',
+        'NIFTY MID SELECT': 'MIDCPNIFTY',
+        'NIFTY 100': 'NIFTY' // Map NIFTY 100 to NIFTY so option chain works
+    };
+    return mapping[upperName] || upperName;
+}
+
+/**
  * Get spot price for an underlying
  * Handles indices, stocks, and MCX commodities
  *
