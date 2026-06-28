@@ -3,6 +3,7 @@ import React, { useEffect, useState, useMemo, useRef, useCallback } from "react"
 import HoldOrderBottomWindow from "./holdOrderBottomWindow.jsx";
 import { calculatePnLAndBrokerage } from "../../../Utils/calculateBrokerage.jsx";
 import { useMarketData } from "../../../contexts/MarketDataContext.jsx";
+import LockedButtonWrapper from "../../../components/LockedButtonWrapper.jsx";
 
 const money = (n) => `₹${Number(n ?? 0).toFixed(2)}`;
 
@@ -525,12 +526,14 @@ export default function HoldOrder({ filter }) {
 
               {/* Action Buttons */}
               <div className="flex gap-3">
-                  <button
-                    onClick={() => handleOrderSelect(data)}
-                    className="w-full py-3.5 bg-[#3b82f6] text-white text-[11px] font-black uppercase tracking-[2px] rounded-2xl hover:brightness-110 active:scale-[0.98] transition-all"
-                  >
-                    Modify
-                  </button>
+                  <LockedButtonWrapper featureId="modify_order" className="w-full">
+                    <button
+                      onClick={() => handleOrderSelect(data)}
+                      className="w-full py-3.5 bg-[#3b82f6] text-white text-[11px] font-black uppercase tracking-[2px] rounded-2xl hover:brightness-110 active:scale-[0.98] transition-all"
+                    >
+                      Modify
+                    </button>
+                  </LockedButtonWrapper>
                   <button
                     onClick={() => handleSingleExit(data)}
                     disabled={isProcessingId === (data._id || data.id)}

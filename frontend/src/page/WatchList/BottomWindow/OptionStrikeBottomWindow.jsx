@@ -14,6 +14,7 @@ const OptionStrikeBottomWindow = ({
     spotPrice,           // Number
     expiry,              // String
     tradingSymbol,       // String (optional, exact symbol from backend)
+    optionLotSize,       // Number (passed from option chain)
     segment,             // String (optional, exact segment from backend)
     brokerId,
     customerId,
@@ -57,7 +58,7 @@ const OptionStrikeBottomWindow = ({
     const bestAsk = liveDataFull?.bestAskPrice || liveData?.bestAskPrice || 0;
 
     // Lot Size
-    const lotSize = underlyingStock?.lot_size || underlyingStock?.lotSize || 50;
+    const lotSize = optionLotSize || underlyingStock?.lot_size || underlyingStock?.lotSize || 50;
 
     // Reset on Open + Fetch jobbing from DB
     useEffect(() => {
