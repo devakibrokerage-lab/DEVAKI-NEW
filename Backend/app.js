@@ -38,14 +38,14 @@ export function createApp() {
     "swasthikabrokerage.in",
     "https://swasthikabrokerage.in",
     "https://devaki-new-backend.onrender.com",
-    "https://shivalik-latest-1.onrender.com",
+    "https://dhanlaxmi-latest-1.onrender.com",
     "http://147.93.106.182:5000",
     "http://147.93.106.182:3000",
     "http://localhost:5000",
     "http://localhost:5173",
-    "https://shivalikbrokerage.in",
-    "https://www.shivalikbrokerage.in",
-    "shivalikbrokerage.in",
+    "https://dhanlaxmibrokerage.in",
+    "https://www.dhanlaxmibrokerage.in",
+    "dhanlaxmibrokerage.in",
     
     process.env.FRONTEND_URL,      // Allowed frontend URL from env
   ].filter(Boolean);

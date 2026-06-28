@@ -116,7 +116,7 @@ const getBrokerCustomers = asyncHandler(async (req, res) => {
     count: customers.length,
     brokerDetails: brokerDetails ? {
         name: brokerDetails.name,
-        organizationName: brokerDetails.organization_name || 'SHIVALIK',
+        organizationName: brokerDetails.organization_name || 'DHANLAXMI',
         login_id: brokerDetails.login_id
     } : null
   });

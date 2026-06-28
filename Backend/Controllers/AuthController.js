@@ -59,7 +59,7 @@ const handleUserLogin = asyncHandler(async (req, res) => {
   let role = '';
   let attachedMongoBrokerId = null;       // Broker का Mongo _id (customer के case में attached broker)
   let associatedBrokerStringId = null;    // Broker का 10-digit login_id (string)
-  let organizationName = "SHIVALIK";     // Default Organization Name
+  let organizationName = "DHANLAXMI";     // Default Organization Name
   let parentId = null;
 
   // 1) Try Broker/Admin first (by login_id)
