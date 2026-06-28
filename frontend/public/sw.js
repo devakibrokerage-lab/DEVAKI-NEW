@@ -1,5 +1,5 @@
 // Simple Service Worker for PWA
-const CACHE_NAME = 'shivalik-v1';
+const CACHE_NAME = 'dhanlaxmi-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
