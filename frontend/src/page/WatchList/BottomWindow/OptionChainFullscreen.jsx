@@ -292,7 +292,7 @@ const OptionChainFullscreen = ({ selectedStock, sheetData, onClose, brokerId, cu
                                             instrumentToken: row.call.instrument_token, 
                                             tradingSymbol: row.call.tradingsymbol,
                                             lotSize: row.call.lot_size,
-                                            expiry: selectedExpiry || expiries?.[0] 
+                                            expiry: selectedExpiry || expiries?.[0]
                                         })}
                                     >
                                         {formatLTP(row.call?.ltp)}

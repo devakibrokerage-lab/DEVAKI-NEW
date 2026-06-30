@@ -501,10 +501,10 @@ const OptionStrikeBottomWindow = ({
                 <div className="p-4 bg-[#1e222d] border-t border-[#2a2e39] flex gap-3">
                     <button 
                         onClick={handleConfirm} 
-                        disabled={submitting || !lotsNum} 
-                        className={`flex-[2] py-3.5 rounded-xl text-white font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 ${actionTab === 'Buy' ? 'bg-[#089981]' : 'bg-[#f23645]'} ${submitting || !lotsNum ? 'opacity-50' : ''}`}
+                        disabled={submitting || !lotsNum || (!isMarketOpen && userRole === 'customer')} 
+                        className={`flex-[2] py-3.5 rounded-xl text-white font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 ${(!isMarketOpen && userRole === 'customer') ? 'bg-[#555] text-white/50' : (actionTab === 'Buy' ? 'bg-[#089981]' : 'bg-[#f23645]')} ${submitting || !lotsNum || (!isMarketOpen && userRole === 'customer') ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                        {submitting ? '...' : actionTab}
+                        {(!isMarketOpen && userRole === 'customer') ? 'Market Closed' : (submitting ? '...' : actionTab)}
                     </button>
                     <button 
                         onClick={onClose} 

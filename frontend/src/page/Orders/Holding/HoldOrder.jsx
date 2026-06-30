@@ -34,6 +34,10 @@ export default function HoldOrder({ filter }) {
   const brokerId = activeContext.brokerId;
   const customerId = activeContext.customerId;
   const orderStatus = "HOLD";
+  const userString = localStorage.getItem("user");
+  const userObject = userString ? JSON.parse(userString) : {};
+  const userRole = (userObject.role || "customer").toLowerCase();
+  const isCustomer = userRole === "customer" || userRole === "user";
 
   const apiBase = import.meta.env.VITE_REACT_APP_API_URL || "";
   const token = localStorage.getItem("token") || null;
@@ -525,23 +529,25 @@ export default function HoldOrder({ filter }) {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3">
-                  <LockedButtonWrapper featureId="modify_order" className="w-full">
+              {!isCustomer && (
+                <div className="flex gap-3">
+                    <LockedButtonWrapper featureId="modify_order" className="w-full">
+                      <button
+                        onClick={() => handleOrderSelect(data)}
+                        className="w-full py-3.5 bg-[#3b82f6] text-white text-[11px] font-black uppercase tracking-[2px] rounded-2xl hover:brightness-110 active:scale-[0.98] transition-all"
+                      >
+                        Modify
+                      </button>
+                    </LockedButtonWrapper>
                     <button
-                      onClick={() => handleOrderSelect(data)}
-                      className="w-full py-3.5 bg-[#3b82f6] text-white text-[11px] font-black uppercase tracking-[2px] rounded-2xl hover:brightness-110 active:scale-[0.98] transition-all"
+                      onClick={() => handleSingleExit(data)}
+                      disabled={isProcessingId === (data._id || data.id)}
+                      className={`w-full py-3.5 bg-[#f23645] text-white text-[11px] font-black uppercase tracking-[2px] rounded-2xl hover:brightness-110 active:scale-[0.98] transition-all ${isProcessingId === (data._id || data.id) ? 'opacity-50' : ''}`}
                     >
-                      Modify
+                      {isProcessingId === (data._id || data.id) ? 'Exiting...' : 'Exit'}
                     </button>
-                  </LockedButtonWrapper>
-                  <button
-                    onClick={() => handleSingleExit(data)}
-                    disabled={isProcessingId === (data._id || data.id)}
-                    className={`w-full py-3.5 bg-[#f23645] text-white text-[11px] font-black uppercase tracking-[2px] rounded-2xl hover:brightness-110 active:scale-[0.98] transition-all ${isProcessingId === (data._id || data.id) ? 'opacity-50' : ''}`}
-                  >
-                    {isProcessingId === (data._id || data.id) ? 'Exiting...' : 'Exit'}
-                  </button>
-              </div>
+                </div>
+              )}
 
               {/* Brokerage tag */}
               <div className="mt-3 text-[8px] text-[#808a9d] text-center opacity-40 font-black uppercase tracking-tighter">
