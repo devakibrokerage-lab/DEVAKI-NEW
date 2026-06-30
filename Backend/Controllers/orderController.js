@@ -508,6 +508,11 @@ const updateOrder = asyncHandler(async (req, res) => {
       update.margin_blocked = 0;
     }
 
+    else if (update.order_status === 'OPEN' && existing.order_status === 'HOLD' && existingIsIntraday) {
+      // Restore margin_blocked on the order. Fund limits are untouched as they were kept blocked during HOLD.
+      update.margin_blocked = existing.price * existing.quantity;
+    }
+
 
     else if (update.order_status === 'CLOSED' && existing.order_status !== 'CLOSED') {
       const marginToRelease = existing.margin_blocked || (existing.price * existing.quantity);
@@ -533,7 +538,7 @@ const updateOrder = asyncHandler(async (req, res) => {
         } else {
           pnl = (entryPrice - exitPrice) * quantity;
         }
-        fund.net_pnl = (fund.net_pnl || 0) + pnl;
+        // fund.net_pnl = (fund.net_pnl || 0) + pnl; // Disabled as per requirement: Deposit margin should only be manually added
         console.log(`[updateOrder] P&L Calculated: ${pnl.toFixed(2)} (Side: ${existing.side}, Entry: ${entryPrice}, Exit: ${exitPrice}, Qty: ${quantity})`);
       }
 
@@ -658,10 +663,9 @@ const exitAllOpenOrder = asyncHandler(async (req, res) => {
       await Order.bulkWrite(bulkOps);
     }
 
-    // Update fund in one save (release all margin at once)
     fund.intraday = fund.intraday || { used_limit: 0, available_limit: 0 };
     fund.intraday.used_limit = Math.max(0, Number(fund.intraday.used_limit || 0) - totalMarginToRelease);
-    fund.net_pnl = (fund.net_pnl || 0) + totalPnl;
+    // fund.net_pnl = (fund.net_pnl || 0) + totalPnl; // Disabled: Deposit Margin is purely manual
     await fund.save();
 
   } catch (err) {

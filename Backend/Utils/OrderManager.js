@@ -168,7 +168,7 @@ const executeExit = async (orderData, exitPrice, reason) => {
                 if (isIntraday) incQuery["intraday.used_limit"] = -marginToRelease;
                 else incQuery["overnight.available_limit"] = marginToRelease;
             }
-            if (pnl !== 0) incQuery["net_pnl"] = pnl;
+            // if (pnl !== 0) incQuery["net_pnl"] = pnl;
 
             await Fund.updateOne(
                 { broker_id_str, customer_id_str },

@@ -404,6 +404,12 @@ export default function OpenOrderBottomWindow({ selectedOrder, onClose, sheetDat
 
                     {showDetails && (
                         <div className="bg-[var(--bg-card)]/60 rounded-2xl p-4 border border-[var(--border-color)] space-y-3 animate-in fade-in zoom-in-95">
+                            {selectedOrder.came_From && (
+                                <div className="flex justify-between items-center text-[11px]">
+                                    <span className="text-[var(--text-muted)] font-bold uppercase tracking-tight">Came From</span>
+                                    <span className="text-purple-400 font-black uppercase">{selectedOrder.came_From}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between items-center text-[11px]">
                                 <span className="text-[var(--text-muted)] font-bold uppercase tracking-tight">Quantity</span>
                                 <span className="text-blue-400 font-black">{initialQty} shares</span>

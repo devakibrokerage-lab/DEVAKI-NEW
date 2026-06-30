@@ -26,7 +26,6 @@ const DetailRow = ({ Icon, label, value, colorClass }) => {
 export default function HoldOrderBottomWindow({ selectedOrder, onClose, sheetData }) {
 
     if (!selectedOrder) return null;
-    const isOpen = logMarketStatus();
 
     const userString = localStorage.getItem('loggedInUser');
     const userObject = userString ? JSON.parse(userString) : {};
@@ -53,6 +52,8 @@ export default function HoldOrderBottomWindow({ selectedOrder, onClose, sheetDat
         symbol, side, product, quantity: initialQty, price: initialPrice, jobbin_price,
         instrument_token, segment, _id: orderId, lots, lot_size, stop_loss, target
     } = selectedOrder;
+
+    const isOpen = logMarketStatus(segment);
 
     const currentLotSize = lot_size || selectedOrder.meta?.selectedStock?.lot_size || 1;
     const tradingsymbol = selectedOrder.meta?.selectedStock?.tradingSymbol ?? symbol ?? "N/A";
@@ -516,24 +517,19 @@ export default function HoldOrderBottomWindow({ selectedOrder, onClose, sheetDat
                 </div>
             </div>
 
-            {(userRole === 'broker' || isOpen) && (
+            {userRole === 'broker' && (
                 <div className="absolute bottom-0 left-0 right-0 p-4 bg-[var(--bg-card)] border-t border-[var(--border-color)] flex flex-col gap-2.5 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                     <div className="flex gap-5">
-                        {userRole === 'broker' && (
-                            <div className="flex-[1.5]">
-                                <button onClick={() => handleAction('Adjust')} disabled={submitting} className={`w-full py-3.5 rounded-xl text-white font-black text-[11px] uppercase tracking-widest bg-[#089981] shadow-lg shadow-[#089981]/20 ${submitting ? 'opacity-50' : ''}`}>
-                                    {submitting && action === 'Adjust' ? 'UPDATING...' : (parsedAddLots > 0 ? 'BUY MORE' : 'UPDATE ORDER')}
-                                </button>
-                            </div>
-                        )}
-
-                        {userRole === 'broker' && (
-                            <div className="flex-1">
-                                <button onClick={() => handleAction('Close')} disabled={submitting} className={`w-full py-3.5 rounded-xl text-white font-black text-[11px] uppercase tracking-widest bg-[#f23645] shadow-lg shadow-[#f23645]/20 ${submitting ? 'opacity-50' : ''}`}>
-                                    {submitting && action === 'Close' ? 'EXITING...' : 'EXIT'}
-                                </button>
-                            </div>
-                        )}
+                        <div className="flex-[1.5]">
+                            <button onClick={() => handleAction('Adjust')} disabled={submitting} className={`w-full py-3.5 rounded-xl text-white font-black text-[11px] uppercase tracking-widest bg-[#089981] shadow-lg shadow-[#089981]/20 ${submitting ? 'opacity-50' : ''}`}>
+                                {submitting && action === 'Adjust' ? 'UPDATING...' : (parsedAddLots > 0 ? 'BUY MORE' : 'UPDATE ORDER')}
+                            </button>
+                        </div>
+                        <div className="flex-1">
+                            <button onClick={() => handleAction('Close')} disabled={submitting} className={`w-full py-3.5 rounded-xl text-white font-black text-[11px] uppercase tracking-widest bg-[#f23645] shadow-lg shadow-[#f23645]/20 ${submitting ? 'opacity-50' : ''}`}>
+                                {submitting && action === 'Close' ? 'EXITING...' : 'EXIT'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

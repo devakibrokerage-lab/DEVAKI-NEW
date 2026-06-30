@@ -4,6 +4,7 @@ import HoldOrderBottomWindow from "./holdOrderBottomWindow.jsx";
 import { calculatePnLAndBrokerage } from "../../../Utils/calculateBrokerage.jsx";
 import { useMarketData } from "../../../contexts/MarketDataContext.jsx";
 import LockedButtonWrapper from "../../../components/LockedButtonWrapper.jsx";
+import { logMarketStatus } from "../../../Utils/marketStatus.js";
 
 const money = (n) => `₹${Number(n ?? 0).toFixed(2)}`;
 
@@ -34,7 +35,7 @@ export default function HoldOrder({ filter }) {
   const brokerId = activeContext.brokerId;
   const customerId = activeContext.customerId;
   const orderStatus = "HOLD";
-  const userString = localStorage.getItem("user");
+  const userString = localStorage.getItem("loggedInUser");
   const userObject = userString ? JSON.parse(userString) : {};
   const userRole = (userObject.role || "customer").toLowerCase();
   const isCustomer = userRole === "customer" || userRole === "user";
@@ -98,6 +99,37 @@ export default function HoldOrder({ filter }) {
       }
     } catch (err) {
       console.error("Exit failed", err);
+    } finally {
+      setIsProcessingId(null);
+    }
+  };
+
+  const handleConvertToOpen = async (data) => {
+    if (isProcessingId) return;
+    setIsProcessingId(data._id || data.id);
+    try {
+      const payload = {
+        broker_id_str: brokerId,
+        customer_id_str: customerId,
+        order_id: data._id || data.id,
+        order_status: "OPEN",
+        came_From: "Holding"
+      };
+
+      const res = await fetch(`${apiBase.replace(/\/$/, "")}/api/orders/updateOrder`, {
+        method: 'POST', // Note: using POST as existing code uses POST for updateOrder
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        window.dispatchEvent(new CustomEvent('orders:changed'));
+        fetchInstrumentData();
+      } else {
+        console.error("Convert to Open failed");
+      }
+    } catch (err) {
+      console.error("Convert to Open failed", err);
     } finally {
       setIsProcessingId(null);
     }
@@ -530,7 +562,14 @@ export default function HoldOrder({ filter }) {
 
               {/* Action Buttons */}
               {!isCustomer && (
-                <div className="flex gap-3">
+                <div className="flex gap-2">
+                    <button
+                      onClick={() => handleConvertToOpen(data)}
+                      disabled={isProcessingId === (data._id || data.id)}
+                      className={`w-full py-3.5 bg-purple-500 text-white text-[11px] font-black uppercase tracking-[2px] rounded-2xl hover:brightness-110 active:scale-[0.98] transition-all ${isProcessingId === (data._id || data.id) ? 'opacity-50' : ''}`}
+                    >
+                      {isProcessingId === (data._id || data.id) ? 'Converting...' : 'To Open'}
+                    </button>
                     <LockedButtonWrapper featureId="modify_order" className="w-full">
                       <button
                         onClick={() => handleOrderSelect(data)}
